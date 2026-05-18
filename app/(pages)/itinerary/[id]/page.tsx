@@ -157,9 +157,10 @@ export default function ItineraryDetail() {
           <Col xs={24} lg={14}>
             <Card className="mb-6 shadow-sm rounded-xl">
               <Title level={3}>行程說明</Title>
-              <Paragraph className="text-base leading-relaxed text-gray-600 whitespace-pre-line">
-                {itinerary.description}
-              </Paragraph>
+              <div
+                className="text-base leading-relaxed text-gray-600 prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: itinerary.description }}
+              />
               {itinerary.venue && (
                 <>
                   <Divider />

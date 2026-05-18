@@ -6,6 +6,7 @@ import { PlusOutlined, MinusCircleOutlined, UploadOutlined } from '@ant-design/i
 import { useRouter } from 'next/navigation';
 import { adminApi } from '../../../lib/api';
 import PageHeader from '../../components/PageHeader';
+import RichTextEditor from '../../../components/RichTextEditor';
 
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
@@ -54,7 +55,7 @@ function StepActivity({ form }: { form: ReturnType<typeof Form.useForm>[0] }) {
         </Form.Item>
 
         <Form.Item name="description" label="行程說明" rules={[{ required: true }]}>
-          <TextArea rows={6} placeholder="詳細介紹活動內容、行程安排等資訊..." />
+          <RichTextEditor placeholder="詳細介紹活動內容、行程安排等資訊..." minHeight={200} />
         </Form.Item>
 
         <Form.Item name="notification_email" label="通知 Email（報名成功時通知此信箱）">

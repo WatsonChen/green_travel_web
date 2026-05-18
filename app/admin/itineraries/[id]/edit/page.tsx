@@ -9,6 +9,7 @@ import { useRouter, useParams } from 'next/navigation';
 import dayjs from 'dayjs';
 import { adminApi } from '../../../../lib/api';
 import PageHeader from '../../../components/PageHeader';
+import RichTextEditor from '../../../../components/RichTextEditor';
 
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
@@ -140,7 +141,7 @@ export default function EditItineraryPage() {
               <Input />
             </Form.Item>
             <Form.Item name="description" label="行程說明" rules={[{ required: true }]}>
-              <TextArea rows={6} />
+              <RichTextEditor minHeight={200} />
             </Form.Item>
             <Form.Item name="notification_email" label="通知 Email">
               <Input />
