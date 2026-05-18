@@ -6,8 +6,7 @@ import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 import AntdRegistry from "./lib/AntdRegistry";
-import Header from "./components/Header";
-import Footer from "./components/Footer";
+import ConditionalShell from "./components/ConditionalShell";
 import { ConfigProvider, App } from "antd";
 import { UserAuthProvider } from "./context/UserAuthContext";
 
@@ -46,9 +45,9 @@ export default function RootLayout({
           >
             <App>
               <UserAuthProvider>
-                <Header />
-                {children}
-                <Footer />
+                <ConditionalShell>
+                  {children}
+                </ConditionalShell>
               </UserAuthProvider>
             </App>
           </ConfigProvider>
