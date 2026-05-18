@@ -1,3 +1,4 @@
+import '@ant-design/v5-patch-for-react-19';
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -7,7 +8,8 @@ const inter = Inter({ subsets: ["latin"], display: "swap" });
 import AntdRegistry from "./lib/AntdRegistry";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, App } from "antd";
+import { UserAuthProvider } from "./context/UserAuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,9 +44,13 @@ export default function RootLayout({
               },
             }}
           >
-            <Header />
-            {children}
-            <Footer />
+            <App>
+              <UserAuthProvider>
+                <Header />
+                {children}
+                <Footer />
+              </UserAuthProvider>
+            </App>
           </ConfigProvider>
         </AntdRegistry>
       </body>

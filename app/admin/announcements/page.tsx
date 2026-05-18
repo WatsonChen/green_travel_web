@@ -1,208 +1,178 @@
 'use client';
 
-import { useState } from 'react';
-import { Button, Modal, Form, Input, Select, message, Descriptions, Tag } from 'antd';
+import { useEffect, useState } from 'react';
+import { Button, Modal, Form, Input, Select, App, Descriptions, Tag, Popconfirm, Table } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import PageHeader from '../components/PageHeader';
-import DataTable from '../components/DataTable';
-import type { Announcement } from '../data/mockData';
-import { announcements } from '../data/mockData';
+import { adminApi } from '../../lib/api';
 
-const priorityConfig = {
-  high: { color: 'red', label: '高' },
-  medium: { color: 'orange', label: '中' },
-  urgent: { color: 'volcano', label: '緊急' },
-};
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  priority: 'high' | 'medium' | 'urgent';
+  status: 'published' | 'draft';
+  publish_date?: string;
+  expiry_date?: string;
+  author: string;
+  created_at: string;
+  updated_at: string;
+}
 
-const statusConfig = {
-  published: { color: 'green', label: '已發佈' },
-  draft: { color: 'default', label: '草稿' },
-};
+const priorityColor: Record<string, string> = { high: 'red', medium: 'orange', urgent: 'volcano' };
+const priorityLabel: Record<string, string> = { high: '高', medium: '中', urgent: '緊急' };
+const statusColor: Record<string, string> = { published: 'green', draft: 'default' };
+const statusLabel: Record<string, string> = { published: '已發佈', draft: '草稿' };
 
-const AnnouncementsPage = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
-  const [viewingAnnouncement, setViewingAnnouncement] = useState<Announcement | null>(null);
+export default function AnnouncementsPage() {
+  const { message } = App.useApp();
+  const [data, setData] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [viewModal, setViewModal] = useState(false);
+  const [editing, setEditing] = useState<Announcement | null>(null);
+  const [viewing, setViewing] = useState<Announcement | null>(null);
   const [form] = Form.useForm();
-  const [tableData, setTableData] = useState<Announcement[]>(announcements);
 
-  const handleEdit = (record: Announcement) => {
-    setEditingAnnouncement(record);
-    form.setFieldsValue(record);
-    setIsModalOpen(true);
+  const fetchAll = () => {
+    adminApi.get('/announcements/admin/all')
+      .then(({ data: rows }) => setData(rows))
+      .catch(() => message.error('載入失敗'))
+      .finally(() => setLoading(false));
   };
 
-  const handleDelete = (record: Announcement) => {
-    setTableData((prev) => prev.filter((item) => item.key !== record.key));
-    message.success('公告已刪除');
-  };
+  useEffect(() => { fetchAll(); }, []);
 
-  const handleView = (record: Announcement) => {
-    setViewingAnnouncement(record);
-    setIsViewModalOpen(true);
-  };
-
-  const handleAdd = () => {
-    setEditingAnnouncement(null);
+  const openAdd = () => {
+    setEditing(null);
     form.resetFields();
     form.setFieldsValue({ status: 'draft', priority: 'medium' });
-    setIsModalOpen(true);
+    setModalOpen(true);
   };
 
-  const handleOk = () => {
-    form
-      .validateFields()
-      .then((values) => {
-        const payload: Announcement = {
-          key: editingAnnouncement?.key || `${Date.now()}`,
-          title: values.title,
-          content: values.content,
-          priority: values.priority,
-          status: values.status,
-          publishDate: values.publishDate,
-          expiryDate: values.expiryDate,
-          author: '系統管理員',
-          createdAt: editingAnnouncement?.createdAt || new Date().toLocaleString('zh-TW'),
-          updatedAt: new Date().toLocaleString('zh-TW'),
-        };
-
-        setTableData((prev) => {
-          if (editingAnnouncement) {
-            return prev.map((item) => (item.key === payload.key ? payload : item));
-          }
-          return [payload, ...prev];
-        });
-
-        setIsModalOpen(false);
-        form.resetFields();
-        message.success(editingAnnouncement ? '公告更新成功！' : '公告新增成功！');
-      })
-      .catch(() => {
-        message.error('請填寫完整資料');
-      });
+  const openEdit = (record: Announcement) => {
+    setEditing(record);
+    form.setFieldsValue({
+      title: record.title,
+      content: record.content,
+      priority: record.priority,
+      status: record.status,
+      publish_date: record.publish_date || '',
+      expiry_date: record.expiry_date || '',
+    });
+    setModalOpen(true);
   };
 
-  const handleCancel = () => {
-    setIsModalOpen(false);
-    form.resetFields();
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields();
+      if (editing) {
+        const { data: updated } = await adminApi.put(`/announcements/${editing.id}`, values);
+        setData((prev) => prev.map((r) => r.id === editing.id ? updated : r));
+        message.success('公告更新成功');
+      } else {
+        const { data: created } = await adminApi.post('/announcements', { ...values, author: '系統管理員' });
+        setData((prev) => [created, ...prev]);
+        message.success('公告新增成功');
+      }
+      setModalOpen(false);
+    } catch (err: unknown) {
+      if ((err as { errorFields?: unknown[] })?.errorFields) return;
+      message.error('儲存失敗');
+    }
   };
 
-  const handleViewCancel = () => {
-    setIsViewModalOpen(false);
-    setViewingAnnouncement(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await adminApi.delete(`/announcements/${id}`);
+      setData((prev) => prev.filter((r) => r.id !== id));
+      message.success('公告已刪除');
+    } catch {
+      message.error('刪除失敗');
+    }
   };
 
   const columns = [
     { title: '標題', dataIndex: 'title', key: 'title' },
-    { title: '內容', dataIndex: 'content', key: 'content' },
-    { title: '優先級', dataIndex: 'priority', key: 'priority' },
-    { title: '狀態', dataIndex: 'status', key: 'status' },
-    { title: '發布日期', dataIndex: 'publishDate', key: 'publishDate' },
-  ];
-
-  const actions = [
-    { label: '查看', onClick: handleView, type: 'link' as const },
-    { label: '編輯', onClick: handleEdit, type: 'link' as const },
-    { label: '刪除', onClick: handleDelete, type: 'link' as const, danger: true },
+    {
+      title: '優先級',
+      dataIndex: 'priority',
+      key: 'priority',
+      render: (v: string) => <Tag color={priorityColor[v]}>{priorityLabel[v]}</Tag>,
+    },
+    {
+      title: '狀態',
+      dataIndex: 'status',
+      key: 'status',
+      render: (v: string) => <Tag color={statusColor[v]}>{statusLabel[v]}</Tag>,
+    },
+    { title: '發布日期', dataIndex: 'publish_date', key: 'publish_date', render: (v: string) => v || '—' },
+    {
+      title: '操作',
+      key: 'actions',
+      render: (_: unknown, r: Announcement) => (
+        <span className="flex gap-2">
+          <Button type="link" size="small" onClick={() => { setViewing(r); setViewModal(true); }}>查看</Button>
+          <Button type="link" size="small" onClick={() => openEdit(r)}>編輯</Button>
+          <Popconfirm title="確定刪除？" onConfirm={() => handleDelete(r.id)} okText="刪除" cancelText="取消">
+            <Button type="link" danger size="small">刪除</Button>
+          </Popconfirm>
+        </span>
+      ),
+    },
   ];
 
   return (
     <>
       <PageHeader
         title="公告布告欄"
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            新增公告
-          </Button>
-        }
+        extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增公告</Button>}
       >
-        <DataTable columns={columns} dataSource={tableData} actions={actions} />
+        <Table columns={columns} dataSource={data} rowKey="id" loading={loading} pagination={{ pageSize: 20 }} />
       </PageHeader>
 
       <Modal
-        title={editingAnnouncement ? '編輯公告' : '新增公告'}
-        open={isModalOpen}
-        onOk={handleOk}
-        onCancel={handleCancel}
-        okText="確定"
+        title={editing ? '編輯公告' : '新增公告'}
+        open={modalOpen}
+        onOk={handleSave}
+        onCancel={() => setModalOpen(false)}
+        okText="儲存"
         cancelText="取消"
-        width={700}
+        width={680}
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="title"
-            label="標題"
-            rules={[{ required: true, message: '請輸入標題' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="content"
-            label="內容"
-            rules={[{ required: true, message: '請輸入內容' }]}
-          >
+          <Form.Item name="title" label="標題" rules={[{ required: true }]}><Input /></Form.Item>
+          <Form.Item name="content" label="內容" rules={[{ required: true }]}>
             <Input.TextArea rows={4} />
           </Form.Item>
-          <Form.Item name="priority" label="優先級" rules={[{ required: true }]}> 
-            <Select>
-              <Select.Option value="high">高</Select.Option>
-              <Select.Option value="medium">中</Select.Option>
-              <Select.Option value="urgent">緊急</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="status" label="狀態" rules={[{ required: true }]}> 
-            <Select>
-              <Select.Option value="published">已發佈</Select.Option>
-              <Select.Option value="draft">草稿</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="publishDate" label="發布日期">
-            <Input type="date" />
-          </Form.Item>
-          <Form.Item name="expiryDate" label="過期日期">
-            <Input type="date" />
-          </Form.Item>
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item name="priority" label="優先級" rules={[{ required: true }]}>
+              <Select options={[{ value: 'high', label: '高' }, { value: 'medium', label: '中' }, { value: 'urgent', label: '緊急' }]} />
+            </Form.Item>
+            <Form.Item name="status" label="狀態" rules={[{ required: true }]}>
+              <Select options={[{ value: 'published', label: '已發佈' }, { value: 'draft', label: '草稿' }]} />
+            </Form.Item>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item name="publish_date" label="發布日期"><Input type="date" /></Form.Item>
+            <Form.Item name="expiry_date" label="過期日期"><Input type="date" /></Form.Item>
+          </div>
         </Form>
       </Modal>
 
-      <Modal
-        title="公告詳情"
-        open={isViewModalOpen}
-        onCancel={handleViewCancel}
-        footer={[
-          <Button key="close" onClick={handleViewCancel}>
-            關閉
-          </Button>,
-        ]}
-        width={700}
-      >
-        {viewingAnnouncement && (
-          <Descriptions column={1} bordered>
-            <Descriptions.Item label="標題">{viewingAnnouncement.title}</Descriptions.Item>
-            <Descriptions.Item label="內容">
-              <div style={{ whiteSpace: 'pre-wrap' }}>{viewingAnnouncement.content}</div>
-            </Descriptions.Item>
-            <Descriptions.Item label="優先級">
-              <Tag color={priorityConfig[viewingAnnouncement.priority].color}>
-                {priorityConfig[viewingAnnouncement.priority].label}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="狀態">
-              <Tag color={statusConfig[viewingAnnouncement.status].color}>
-                {statusConfig[viewingAnnouncement.status].label}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="發布日期">{viewingAnnouncement.publishDate || '-'}</Descriptions.Item>
-            <Descriptions.Item label="過期日期">{viewingAnnouncement.expiryDate || '-'}</Descriptions.Item>
-            <Descriptions.Item label="作者">{viewingAnnouncement.author}</Descriptions.Item>
-            <Descriptions.Item label="創建時間">{viewingAnnouncement.createdAt}</Descriptions.Item>
-            <Descriptions.Item label="更新時間">{viewingAnnouncement.updatedAt}</Descriptions.Item>
+      <Modal title="公告詳情" open={viewModal} onCancel={() => setViewModal(false)} footer={<Button onClick={() => setViewModal(false)}>關閉</Button>} width={680}>
+        {viewing && (
+          <Descriptions column={1} bordered size="small">
+            <Descriptions.Item label="標題">{viewing.title}</Descriptions.Item>
+            <Descriptions.Item label="內容"><div style={{ whiteSpace: 'pre-wrap' }}>{viewing.content}</div></Descriptions.Item>
+            <Descriptions.Item label="優先級"><Tag color={priorityColor[viewing.priority]}>{priorityLabel[viewing.priority]}</Tag></Descriptions.Item>
+            <Descriptions.Item label="狀態"><Tag color={statusColor[viewing.status]}>{statusLabel[viewing.status]}</Tag></Descriptions.Item>
+            <Descriptions.Item label="發布日期">{viewing.publish_date || '—'}</Descriptions.Item>
+            <Descriptions.Item label="過期日期">{viewing.expiry_date || '—'}</Descriptions.Item>
+            <Descriptions.Item label="作者">{viewing.author}</Descriptions.Item>
           </Descriptions>
         )}
       </Modal>
     </>
   );
-};
-
-export default AnnouncementsPage;
+}

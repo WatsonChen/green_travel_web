@@ -1,132 +1,83 @@
 'use client';
 
-import { useState } from 'react';
-import { Button, Modal, Form, Input, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { useEffect, useState } from 'react';
+import { Table, Tag, Select, App } from 'antd';
 import PageHeader from '../components/PageHeader';
-import DataTable from '../components/DataTable';
-import type { Member } from '../data/mockData';
-import { members } from '../data/mockData';
+import { adminApi } from '../../lib/api';
 
-const MembersPage = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<Member | null>(null);
-  const [form] = Form.useForm();
+interface Member {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  id_number: string | null;
+  status: string;
+  created_at: string;
+}
 
-  const [tableData, setTableData] = useState<Member[]>(members);
+const statusOptions = [
+  { value: 'active', label: '啟用' },
+  { value: 'inactive', label: '停用' },
+];
 
-  const handleEdit = (record: Member) => {
-    setEditingMember(record);
-    form.setFieldsValue(record);
-    setIsModalOpen(true);
-  };
+export default function MembersPage() {
+  const { message } = App.useApp();
+  const [data, setData] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleDelete = (record: Member) => {
-    setTableData((prev) => prev.filter((item) => item.key !== record.key));
-    message.success('會員已刪除');
-  };
+  useEffect(() => {
+    adminApi.get('/members')
+      .then(({ data: rows }) => setData(rows))
+      .catch(() => message.error('載入失敗'))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const handleAdd = () => {
-    setEditingMember(null);
-    form.resetFields();
-    setIsModalOpen(true);
-  };
-
-  const handleOk = () => {
-    form
-      .validateFields()
-      .then((values) => {
-        if (editingMember) {
-          setTableData((prev) =>
-            prev.map((item) => (item.key === editingMember.key ? { ...item, ...values } : item))
-          );
-          message.success('會員更新成功！');
-        } else {
-          const nextKey = `${Date.now()}`;
-          setTableData((prev) => [
-            ...prev,
-            {
-              key: nextKey,
-              joinDate: new Date().toISOString().slice(0, 10),
-              status: 'active',
-              ...values,
-            },
-          ]);
-          message.success('會員新增成功！');
-        }
-        setIsModalOpen(false);
-        form.resetFields();
-      })
-      .catch(() => {
-        message.error('請填寫完整資料');
-      });
-  };
-
-  const handleCancel = () => {
-    setIsModalOpen(false);
-    form.resetFields();
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await adminApi.patch(`/members/${id}`, { status });
+      setData((prev) => prev.map((r) => r.id === id ? { ...r, status } : r));
+      message.success('狀態已更新');
+    } catch {
+      message.error('更新失敗');
+    }
   };
 
   const columns = [
     { title: '姓名', dataIndex: 'name', key: 'name' },
-    { title: '電子郵件', dataIndex: 'email', key: 'email' },
-    { title: '電話', dataIndex: 'phone', key: 'phone' },
-    { title: '加入日期', dataIndex: 'joinDate', key: 'joinDate' },
-    { title: '狀態', dataIndex: 'status', key: 'status' },
-  ];
-
-  const actions = [
-    { label: '編輯', onClick: handleEdit, type: 'link' as const },
-    { label: '刪除', onClick: handleDelete, type: 'link' as const, danger: true },
+    { title: 'Email', dataIndex: 'email', key: 'email', render: (v: string | null) => v || '—' },
+    { title: '電話', dataIndex: 'phone', key: 'phone', render: (v: string | null) => v || '—' },
+    { title: '身分證字號', dataIndex: 'id_number', key: 'id_number', render: (v: string | null) => v || '—' },
+    {
+      title: '加入日期',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (v: string) => new Date(v).toLocaleDateString('zh-TW'),
+    },
+    {
+      title: '狀態',
+      dataIndex: 'status',
+      key: 'status',
+      render: (v: string, r: Member) => (
+        <Select
+          value={v}
+          size="small"
+          options={statusOptions}
+          onChange={(val) => updateStatus(r.id, val)}
+        />
+      ),
+    },
   ];
 
   return (
-    <>
-      <PageHeader
-        title="會員管理"
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            新增會員
-          </Button>
-        }
-      >
-        <DataTable columns={columns} dataSource={tableData} actions={actions} />
-      </PageHeader>
-
-      <Modal
-        title={editingMember ? '編輯會員' : '新增會員'}
-        open={isModalOpen}
-        onOk={handleOk}
-        onCancel={handleCancel}
-        okText="確定"
-        cancelText="取消"
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="姓名"
-            rules={[{ required: true, message: '請輸入姓名' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="email"
-            label="電子郵件"
-            rules={[{ required: true, type: 'email', message: '請輸入有效電子郵件' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="phone"
-            label="電話"
-            rules={[{ required: true, message: '請輸入電話' }]}
-          >
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </>
+    <PageHeader title="會員管理">
+      <Table
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        scroll={{ x: 700 }}
+        pagination={{ pageSize: 20 }}
+      />
+    </PageHeader>
   );
-};
-
-export default MembersPage;
+}
