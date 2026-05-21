@@ -56,6 +56,7 @@ export default function EditItineraryPage() {
           price: it.price,
           max_seats: it.max_seats,
           waitlist_enabled: it.waitlist_enabled,
+          waitlist_limit: it.waitlist_limit,
           venue: it.venue,
           notification_email: it.notification_email,
           confirmation_message: it.confirmation_message,
@@ -88,6 +89,7 @@ export default function EditItineraryPage() {
         price: values.price,
         max_seats: values.max_seats,
         waitlist_enabled: values.waitlist_enabled || false,
+        waitlist_limit: values.waitlist_enabled ? (values.waitlist_limit || null) : null,
         venue: values.venue,
         notification_email: values.notification_email,
         confirmation_message: values.confirmation_message,
@@ -153,6 +155,16 @@ export default function EditItineraryPage() {
                 <Switch checkedChildren="是" unCheckedChildren="否" />
               </Form.Item>
             </div>
+
+            <Form.Item noStyle dependencies={['waitlist_enabled']}>
+              {({ getFieldValue }) =>
+                getFieldValue('waitlist_enabled') ? (
+                  <Form.Item name="waitlist_limit" label="候補人數上限" extra="留空表示無上限">
+                    <InputNumber min={1} style={{ width: '100%' }} placeholder="例：10" />
+                  </Form.Item>
+                ) : null
+              }
+            </Form.Item>
 
             <Form.Item name="venue" label="集合地點">
               <Input placeholder="例：台北車站一號出口（選填）" />
