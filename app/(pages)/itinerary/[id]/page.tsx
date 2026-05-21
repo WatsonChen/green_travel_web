@@ -161,7 +161,7 @@ export default function ItineraryDetail() {
       <Form.Item name="contact_phone" label="行動電話" rules={[{ required: true, message: '請輸入電話' }, twPhoneRule]}>
         <Input prefix={<PhoneOutlined />} placeholder="09xxxxxxxx" />
       </Form.Item>
-      <Form.Item name="contact_email" label="Email">
+      <Form.Item name="contact_email" label="Email" rules={[{ type: 'email', message: '請輸入有效的 Email 格式' }]}>
         <Input prefix={<MailOutlined />} placeholder="your@email.com" />
       </Form.Item>
       <Form.Item name="gender" label="性別" rules={[{ required: true }]}>

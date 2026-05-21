@@ -146,8 +146,8 @@ export default function ProfilePage() {
                       <Radio value="女">女</Radio>
                     </Radio.Group>
                   </Form.Item>
-                  <Form.Item name="email" label="Email">
-                    <Input />
+                  <Form.Item name="email" label="Email" rules={[{ type: 'email', message: '請輸入有效的 Email 格式' }]}>
+                    <Input placeholder="your@email.com" />
                   </Form.Item>
                   <Form.Item name="phone" label="手機號碼" rules={[twPhoneRule]}>
                     <Input placeholder="09xxxxxxxx" />

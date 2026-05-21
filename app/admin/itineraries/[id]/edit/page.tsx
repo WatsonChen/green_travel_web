@@ -153,6 +153,7 @@ export default function EditItineraryPage() {
                 <Switch checkedChildren="是" unCheckedChildren="否" />
               </Form.Item>
             </div>
+
             <Form.Item name="venue" label="集合地點">
               <Input placeholder="例：台北車站一號出口（選填）" />
             </Form.Item>
