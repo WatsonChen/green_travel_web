@@ -7,6 +7,7 @@ import RocDateSelect from '../../components/RocDateSelect';
 import dayjs from 'dayjs';
 import { useUserAuth } from '../../context/UserAuthContext';
 import api from '../../lib/api';
+import { twIdRule, twPhoneRule } from '../../lib/validators';
 
 interface Order {
   id: string;
@@ -133,7 +134,7 @@ export default function ProfilePage() {
                   <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
                     <Input />
                   </Form.Item>
-                  <Form.Item name="id_number" label="身分證字號">
+                  <Form.Item name="id_number" label="身分證字號" rules={[twIdRule]}>
                     <Input placeholder="A123456789" />
                   </Form.Item>
                   <Form.Item name="birthday" label="出生年月日（民國）">
@@ -148,8 +149,8 @@ export default function ProfilePage() {
                   <Form.Item name="email" label="Email">
                     <Input />
                   </Form.Item>
-                  <Form.Item name="phone" label="手機號碼">
-                    <Input />
+                  <Form.Item name="phone" label="手機號碼" rules={[twPhoneRule]}>
+                    <Input placeholder="09xxxxxxxx" />
                   </Form.Item>
                   <Button type="primary" htmlType="submit" loading={saving}>儲存變更</Button>
                 </Form>

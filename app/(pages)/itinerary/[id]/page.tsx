@@ -14,6 +14,7 @@ import {
 import dayjs from 'dayjs';
 import api from '../../../lib/api';
 import { useUserAuth } from '../../../context/UserAuthContext';
+import { twIdRule, twPhoneRule } from '../../../lib/validators';
 
 const { Title, Text } = Typography;
 
@@ -151,13 +152,13 @@ export default function ItineraryDetail() {
       <Form.Item name="contact_name" label="姓名" rules={[{ required: true }]}>
         <Input prefix={<UserOutlined />} placeholder="王小明" />
       </Form.Item>
-      <Form.Item name="id_number" label="身分證字號" rules={[{ required: true, message: '請輸入身分證字號' }]}>
+      <Form.Item name="id_number" label="身分證字號" rules={[{ required: true, message: '請輸入身分證字號' }, twIdRule]}>
         <Input placeholder="A123456789" />
       </Form.Item>
       <Form.Item name="birthday" label="出生年月日（民國）" rules={[{ required: true, message: '請選擇出生年月日' }]}>
         <RocDateSelect />
       </Form.Item>
-      <Form.Item name="contact_phone" label="行動電話" rules={[{ required: true }]}>
+      <Form.Item name="contact_phone" label="行動電話" rules={[{ required: true, message: '請輸入電話' }, twPhoneRule]}>
         <Input prefix={<PhoneOutlined />} placeholder="09xxxxxxxx" />
       </Form.Item>
       <Form.Item name="contact_email" label="Email">
