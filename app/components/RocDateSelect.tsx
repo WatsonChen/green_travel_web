@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Select, Space } from 'antd';
 import dayjs from 'dayjs';
 
@@ -20,11 +21,36 @@ function getDaysInMonth(rocYear: number, month: number): number {
 }
 
 export default function RocDateSelect({ value, onChange }: RocDateSelectProps) {
-  const rocYear = value ? value.year() - 1911 : undefined;
-  const month = value ? value.month() + 1 : undefined;
-  const day = value ? value.date() : undefined;
+  const [year, setYear] = useState<number | undefined>(
+    value ? value.year() - 1911 : undefined
+  );
+  const [month, setMonth] = useState<number | undefined>(
+    value ? value.month() + 1 : undefined
+  );
+  const [day, setDay] = useState<number | undefined>(
+    value ? value.date() : undefined
+  );
 
-  const maxDays = rocYear && month ? getDaysInMonth(rocYear, month) : 31;
+  // 外部 value 變更時同步（例如表單預填）
+  useEffect(() => {
+    if (value) {
+      setYear(value.year() - 1911);
+      setMonth(value.month() + 1);
+      setDay(value.date());
+    } else if (value === null) {
+      setYear(undefined);
+      setMonth(undefined);
+      setDay(undefined);
+    }
+  }, [value]);
+
+  const emit = (y: number | undefined, m: number | undefined, d: number | undefined) => {
+    if (!y || !m || !d) { onChange?.(null); return; }
+    const date = dayjs(`${y + 1911}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+    onChange?.(date.isValid() ? date : null);
+  };
+
+  const maxDays = year && month ? getDaysInMonth(year, month) : 31;
 
   const yearOptions = Array.from({ length: CURRENT_ROC_YEAR }, (_, i) => {
     const y = CURRENT_ROC_YEAR - i;
@@ -36,20 +62,31 @@ export default function RocDateSelect({ value, onChange }: RocDateSelectProps) {
     label: `${i + 1} 日`,
   }));
 
-  const emit = (y?: number, m?: number, d?: number) => {
-    if (!y || !m || !d) { onChange?.(null); return; }
-    const date = dayjs(`${y + 1911}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
-    onChange?.(date.isValid() ? date : null);
+  const handleYearChange = (v: number) => {
+    setYear(v);
+    const safeDay = day && month && day > getDaysInMonth(v, month) ? undefined : day;
+    if (safeDay !== day) setDay(safeDay);
+    emit(v, month, safeDay);
   };
 
-  const safeDay = day && maxDays && day > maxDays ? undefined : day;
+  const handleMonthChange = (v: number) => {
+    setMonth(v);
+    const safeDay = day && year && day > getDaysInMonth(year, v) ? undefined : day;
+    if (safeDay !== day) setDay(safeDay);
+    emit(year, v, safeDay);
+  };
+
+  const handleDayChange = (v: number) => {
+    setDay(v);
+    emit(year, month, v);
+  };
 
   return (
     <Space.Compact style={{ width: '100%' }}>
       <Select
         placeholder="民國年"
-        value={rocYear}
-        onChange={(v) => emit(v, month, safeDay)}
+        value={year}
+        onChange={handleYearChange}
         options={yearOptions}
         style={{ flex: 2 }}
         showSearch
@@ -58,14 +95,14 @@ export default function RocDateSelect({ value, onChange }: RocDateSelectProps) {
       <Select
         placeholder="月"
         value={month}
-        onChange={(v) => emit(rocYear, v, safeDay)}
+        onChange={handleMonthChange}
         options={MONTH_OPTIONS}
         style={{ flex: 1 }}
       />
       <Select
         placeholder="日"
-        value={safeDay}
-        onChange={(v) => emit(rocYear, month, v)}
+        value={day}
+        onChange={handleDayChange}
         options={dayOptions}
         style={{ flex: 1 }}
       />
