@@ -4,12 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   Typography, Form, Input, InputNumber, Button, App,
-  Row, Col, Card, Divider, DatePicker, Select, Radio, Spin, Tag, Drawer,
+  Row, Col, Card, Divider, Select, Radio, Spin, Tag, Drawer,
 } from 'antd';
+import RocDateSelect from '../../../components/RocDateSelect';
 import {
   ClockCircleOutlined, EnvironmentOutlined, UserOutlined,
   MailOutlined, PhoneOutlined, TeamOutlined, FormOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import api from '../../../lib/api';
 import { useUserAuth } from '../../../context/UserAuthContext';
 
@@ -56,6 +58,21 @@ export default function ItineraryDetail() {
       .catch(() => message.error('找不到此行程'))
       .finally(() => setLoading(false));
   }, [params?.id]);
+
+  useEffect(() => {
+    if (user) {
+      const prefill = {
+        contact_name: user.name || undefined,
+        contact_email: user.email || undefined,
+        contact_phone: user.phone || undefined,
+        id_number: user.id_number || undefined,
+        gender: user.gender || undefined,
+        birthday: user.birthday ? dayjs(user.birthday) : undefined,
+      };
+      form.setFieldsValue(prefill);
+      mobileForm.setFieldsValue(prefill);
+    }
+  }, [user]);
 
   const onFinish = async (values: Record<string, unknown>) => {
     if (!user) {
@@ -137,8 +154,8 @@ export default function ItineraryDetail() {
       <Form.Item name="id_number" label="身分證字號" rules={[{ required: true, message: '請輸入身分證字號' }]}>
         <Input placeholder="A123456789" />
       </Form.Item>
-      <Form.Item name="birthday" label="生日" rules={[{ required: true }]}>
-        <DatePicker className="w-full" placeholder="選擇生日" />
+      <Form.Item name="birthday" label="出生年月日（民國）" rules={[{ required: true, message: '請選擇出生年月日' }]}>
+        <RocDateSelect />
       </Form.Item>
       <Form.Item name="contact_phone" label="行動電話" rules={[{ required: true }]}>
         <Input prefix={<PhoneOutlined />} placeholder="09xxxxxxxx" />

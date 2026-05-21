@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Steps, Button, Form, Input, InputNumber, DatePicker, Switch, Select, App, Space, Card } from 'antd';
+import { Steps, Button, Form, Input, InputNumber, DatePicker, Switch, Select, Radio, App, Space, Card } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { adminApi } from '../../../lib/api';
@@ -29,16 +29,28 @@ function StepActivity({ form }: { form: ReturnType<typeof Form.useForm>[0] }) {
           <Input size="large" placeholder="例：長江三峽行攬月八日遊" />
         </Form.Item>
 
-        <Form.Item name="destination" label="目的地" rules={[{ required: true }]}>
-          <Input placeholder="例：重慶、中國" />
+        <Form.Item name="region_type" label="旅遊類型" rules={[{ required: true, message: '請選擇旅遊類型' }]}>
+          <Radio.Group>
+            <Radio value="domestic">國內旅遊</Radio>
+            <Radio value="international">國外旅遊</Radio>
+          </Radio.Group>
+        </Form.Item>
+
+        <Form.Item name="destination" label="旅遊地區" rules={[{ required: true, message: '請輸入旅遊地區' }]}>
+          <Input placeholder="例：澎湖、台灣 / 重慶、中國" />
         </Form.Item>
 
         <Form.Item name="dateRange" label="活動日期" rules={[{ required: true, message: '請選擇日期' }]}>
           <RangePicker style={{ width: '100%' }} />
         </Form.Item>
 
-        <Form.Item name="price" label="報名費用（NT$）" rules={[{ required: true }]}>
-          <InputNumber min={0} style={{ width: '100%' }} formatter={(v) => `NT$ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+        <Form.Item name="price" label="報名費用（NT$）" rules={[{ required: true, message: '請輸入費用' }]}>
+          <InputNumber
+            min={0}
+            style={{ width: '100%' }}
+            formatter={(v) => `NT$ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+            parser={(v) => Number(v?.replace(/NT\$\s?|(,*)/g, '') || 0) as unknown as 0}
+          />
         </Form.Item>
 
         <div className="grid grid-cols-2 gap-4">
@@ -50,8 +62,8 @@ function StepActivity({ form }: { form: ReturnType<typeof Form.useForm>[0] }) {
           </Form.Item>
         </div>
 
-        <Form.Item name="venue" label="活動地點">
-          <Input placeholder="地址（選填）" />
+        <Form.Item name="venue" label="集合地點">
+          <Input placeholder="例：台北車站一號出口（選填）" />
         </Form.Item>
 
         <Form.Item name="description" label="行程說明" rules={[{ required: true }]}>
@@ -257,6 +269,7 @@ export default function NewItineraryPage() {
           venue: values.venue,
           notification_email: values.notification_email,
           confirmation_message: values.confirmation_message,
+          tags: [values.region_type === 'domestic' ? '國內' : '國外'],
         };
 
         if (createdId) {

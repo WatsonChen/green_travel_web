@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Tabs, Form, Input, Button, Table, Tag, App, Spin } from 'antd';
+import { Tabs, Form, Input, Button, Table, Tag, App, Spin, Radio } from 'antd';
+import RocDateSelect from '../../components/RocDateSelect';
+import dayjs from 'dayjs';
 import { useUserAuth } from '../../context/UserAuthContext';
 import api from '../../lib/api';
 
@@ -45,7 +47,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
-      form.setFieldsValue({ name: user.name, email: user.email, phone: user.phone });
+      form.setFieldsValue({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        birthday: user.birthday ? dayjs(user.birthday) : null,
+        gender: user.gender,
+        id_number: user.id_number,
+      });
       fetchOrders();
     }
   }, [user]);
@@ -62,10 +71,14 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveProfile = async (values: Record<string, string>) => {
+  const handleSaveProfile = async (values: Record<string, unknown>) => {
     setSaving(true);
     try {
-      await api.patch('/auth/user/me', values);
+      const payload = {
+        ...values,
+        birthday: values.birthday ? (values.birthday as dayjs.Dayjs).format('YYYY-MM-DD') : undefined,
+      };
+      await api.patch('/auth/user/me', payload);
       message.success('資料已更新');
     } catch {
       message.error('更新失敗');
@@ -119,6 +132,18 @@ export default function ProfilePage() {
                 <Form form={form} layout="vertical" onFinish={handleSaveProfile}>
                   <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
                     <Input />
+                  </Form.Item>
+                  <Form.Item name="id_number" label="身分證字號">
+                    <Input placeholder="A123456789" />
+                  </Form.Item>
+                  <Form.Item name="birthday" label="出生年月日（民國）">
+                    <RocDateSelect />
+                  </Form.Item>
+                  <Form.Item name="gender" label="性別">
+                    <Radio.Group>
+                      <Radio value="男">男</Radio>
+                      <Radio value="女">女</Radio>
+                    </Radio.Group>
                   </Form.Item>
                   <Form.Item name="email" label="Email">
                     <Input />

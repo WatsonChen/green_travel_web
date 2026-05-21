@@ -5,14 +5,19 @@ import { Card } from 'antd';
 import type { ReactNode } from 'react';
 
 interface PageHeaderProps {
-  title: string;
+  title?: string;
   extra?: ReactNode;
   children: ReactNode;
 }
 
-const PageHeader: React.FC<PageHeaderProps> = ({ title, extra, children }) => {
+const PageHeader: React.FC<PageHeaderProps> = ({ extra, children }) => {
   return (
-    <Card className="surface-card" title={title} extra={extra} bordered>
+    <Card
+      className="surface-card"
+      bordered
+      styles={{ header: extra ? undefined : { display: 'none' } }}
+      extra={extra}
+    >
       {children}
     </Card>
   );

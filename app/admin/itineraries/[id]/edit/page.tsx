@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Button, Form, Input, InputNumber, DatePicker, Switch, Select, App, Space, Card, Spin,
+  Button, Form, Input, InputNumber, DatePicker, Switch, Select, Radio, App, Space, Card, Spin,
 } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import { useRouter, useParams } from 'next/navigation';
@@ -44,9 +44,13 @@ export default function EditItineraryPage() {
         const start = it.start_date ? dayjs(it.start_date as string) : null;
         const end = it.end_date ? dayjs(it.end_date as string) : null;
 
+        const tags = (it.tags as string[]) || [];
+        const regionType = tags.includes('國內') ? 'domestic' : tags.includes('國外') ? 'international' : undefined;
+
         form.setFieldsValue({
           title: it.title,
           destination: it.destination,
+          region_type: regionType,
           description: it.description,
           dateRange: start && end ? [start, end] : undefined,
           price: it.price,
@@ -88,6 +92,7 @@ export default function EditItineraryPage() {
         notification_email: values.notification_email,
         confirmation_message: values.confirmation_message,
         status: values.status,
+        tags: [values.region_type === 'domestic' ? '國內' : '國外'],
         custom_fields: customFields,
         cover_image: coverImage || undefined,
       });
@@ -120,14 +125,25 @@ export default function EditItineraryPage() {
             <Form.Item name="title" label="行程名稱" rules={[{ required: true }]}>
               <Input size="large" />
             </Form.Item>
-            <Form.Item name="destination" label="目的地" rules={[{ required: true }]}>
-              <Input />
+            <Form.Item name="region_type" label="旅遊類型" rules={[{ required: true, message: '請選擇旅遊類型' }]}>
+              <Radio.Group>
+                <Radio value="domestic">國內旅遊</Radio>
+                <Radio value="international">國外旅遊</Radio>
+              </Radio.Group>
+            </Form.Item>
+            <Form.Item name="destination" label="旅遊地區" rules={[{ required: true }]}>
+              <Input placeholder="例：澎湖、台灣 / 重慶、中國" />
             </Form.Item>
             <Form.Item name="dateRange" label="活動日期" rules={[{ required: true }]}>
               <RangePicker style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="price" label="報名費用（NT$）" rules={[{ required: true }]}>
-              <InputNumber min={0} style={{ width: '100%' }} formatter={(v) => `NT$ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+              <InputNumber
+                min={0}
+                style={{ width: '100%' }}
+                formatter={(v) => `NT$ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                parser={(v) => Number(v?.replace(/NT\$\s?|(,*)/g, '') || 0) as unknown as 0}
+              />
             </Form.Item>
             <div className="grid grid-cols-2 gap-4">
               <Form.Item name="max_seats" label="名額上限" rules={[{ required: true }]}>
@@ -137,8 +153,8 @@ export default function EditItineraryPage() {
                 <Switch checkedChildren="是" unCheckedChildren="否" />
               </Form.Item>
             </div>
-            <Form.Item name="venue" label="活動地點">
-              <Input />
+            <Form.Item name="venue" label="集合地點">
+              <Input placeholder="例：台北車站一號出口（選填）" />
             </Form.Item>
             <Form.Item name="description" label="行程說明" rules={[{ required: true }]}>
               <RichTextEditor minHeight={200} />
