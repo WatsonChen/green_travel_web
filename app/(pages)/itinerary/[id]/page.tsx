@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Typography, Form, Input, InputNumber, Button, App,
   Row, Col, Card, Divider, Select, Radio, Spin, Tag, Drawer,
@@ -52,6 +53,8 @@ export default function ItineraryDetail() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form] = Form.useForm();
   const [mobileForm] = Form.useForm();
+  const desktopQty: number = Form.useWatch('quantity', form) ?? 1;
+  const mobileQty: number = Form.useWatch('quantity', mobileForm) ?? 1;
 
   useEffect(() => {
     api.get(`/itineraries/${params?.id}`)
@@ -85,27 +88,53 @@ export default function ItineraryDetail() {
 
     setSubmitting(true);
     try {
-      const { quantity, contact_name, contact_email, contact_phone, birthday, gender, id_number, ...customData } = values;
+      const { quantity, contact_name, contact_email, contact_phone, birthday, gender, id_number, ...rest } = values;
+      const qty = (quantity as number) || 1;
+
+      // Separate additional participant fields from custom fields
+      const customData: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(rest)) {
+        if (!/^p\d+_/.test(key)) customData[key] = val;
+      }
+
+      // Build participant list: participant 1 = contact person, rest from dynamic fields
+      type Participant = { name: unknown; id_number: unknown; birthday: unknown; gender: unknown; phone: unknown };
+      const participants: Participant[] = [
+        { name: contact_name, id_number, birthday, gender, phone: contact_phone },
+      ];
+      for (let i = 2; i <= qty; i++) {
+        participants.push({
+          name: values[`p${i}_name`],
+          id_number: values[`p${i}_id_number`],
+          birthday: values[`p${i}_birthday`],
+          gender: values[`p${i}_gender`],
+          phone: values[`p${i}_phone`],
+        });
+      }
 
       const { data: order } = await api.post('/orders', {
         itinerary_id: itinerary.id,
-        quantity: quantity || 1,
+        quantity: qty,
         contact_name,
         contact_email,
         contact_phone,
       });
 
-      await api.post('/registrations', {
-        order_id: order.id,
-        itinerary_id: itinerary.id,
-        applicant_name: contact_name,
-        email: contact_email,
-        phone: contact_phone,
-        birthday: (birthday as { format?: (s: string) => string })?.format?.('YYYY-MM-DD') || null,
-        gender,
-        id_number,
-        custom_field_data: customData,
-      });
+      await Promise.all(
+        participants.map((p, idx) =>
+          api.post('/registrations', {
+            order_id: order.id,
+            itinerary_id: itinerary.id,
+            applicant_name: p.name,
+            email: idx === 0 ? contact_email : null,
+            phone: p.phone || null,
+            birthday: (p.birthday as { format?: (s: string) => string })?.format?.('YYYY-MM-DD') || null,
+            gender: p.gender,
+            id_number: p.id_number,
+            custom_field_data: customData,
+          })
+        )
+      );
 
       const { data: payResult } = await api.post('/payments/initiate', { order_id: order.id });
 
@@ -146,9 +175,45 @@ export default function ItineraryDetail() {
   const days = Math.ceil((new Date(itinerary.end_date).getTime() - new Date(itinerary.start_date).getTime()) / 86400000) + 1;
   const soldOut = itinerary.available_seats === 0;
 
+  // 額外旅客欄位（第 2 位起）
+  const extraParticipantFields = (n: number) => (
+    <React.Fragment key={n}>
+      <Divider orientation="left" style={{ color: '#555', fontSize: 14 }}>第 {n} 位旅客</Divider>
+      <Form.Item name={`p${n}_name`} label="姓名" rules={[{ required: true, message: '請輸入姓名' }]}>
+        <Input prefix={<UserOutlined />} placeholder="王小明" />
+      </Form.Item>
+      <Form.Item name={`p${n}_id_number`} label="身分證字號" rules={[{ required: true, message: '請輸入身分證字號' }, twIdRule]}>
+        <Input placeholder="A123456789" />
+      </Form.Item>
+      <Form.Item name={`p${n}_birthday`} label="出生年月日（民國）" rules={[{ required: true, message: '請選擇出生年月日' }]}>
+        <RocDateSelect />
+      </Form.Item>
+      <Form.Item name={`p${n}_gender`} label="性別" rules={[{ required: true, message: '請選擇性別' }]}>
+        <Radio.Group>
+          <Radio value="男">男</Radio>
+          <Radio value="女">女</Radio>
+        </Radio.Group>
+      </Form.Item>
+      <Form.Item name={`p${n}_phone`} label="行動電話" rules={[{ required: true, message: '請輸入電話' }, twPhoneRule]}>
+        <Input prefix={<PhoneOutlined />} placeholder="09xxxxxxxx" />
+      </Form.Item>
+    </React.Fragment>
+  );
+
   // 報名表單欄位（桌機 & 手機 Drawer 共用）
-  const formFields = (formInstance: ReturnType<typeof Form.useForm>[0]) => (
+  const formFields = (watchedQty: number) => (
     <>
+      {watchedQty > 1 && (
+        <Divider orientation="left" style={{ color: '#555', fontSize: 14 }}>第 1 位旅客（聯絡人）</Divider>
+      )}
+      {user && (
+        <p className="text-xs text-gray-400 mb-3">
+          已從個人資料帶入部分欄位。
+          <Link href="/profile" className="ml-1 underline" style={{ color: '#97c618' }}>
+            前往個人資料頁完善資料
+          </Link>
+        </p>
+      )}
       <Form.Item name="contact_name" label="姓名" rules={[{ required: true }]}>
         <Input prefix={<UserOutlined />} placeholder="王小明" />
       </Form.Item>
@@ -173,6 +238,8 @@ export default function ItineraryDetail() {
       <Form.Item name="quantity" label="報名人數" initialValue={1} rules={[{ required: true }]}>
         <InputNumber min={1} max={itinerary.available_seats || 1} className="w-full" />
       </Form.Item>
+      {/* 額外旅客 */}
+      {Array.from({ length: Math.max(0, watchedQty - 1) }, (_, i) => extraParticipantFields(i + 2))}
       {(itinerary.custom_fields || []).map((field, idx) => (
         <Form.Item
           key={idx}
@@ -274,7 +341,7 @@ export default function ItineraryDetail() {
                 </div>
               </div>
               <Form form={form} layout="vertical" onFinish={onFinish} size="large">
-                {formFields(form)}
+                {formFields(desktopQty)}
               </Form>
             </Card>
           </Col>
@@ -323,7 +390,7 @@ export default function ItineraryDetail() {
           <div className="text-center py-12 text-gray-400">此行程已額滿</div>
         ) : (
           <Form form={mobileForm} layout="vertical" onFinish={onFinish} size="large">
-            {formFields(mobileForm)}
+            {formFields(mobileQty)}
           </Form>
         )}
       </Drawer>
