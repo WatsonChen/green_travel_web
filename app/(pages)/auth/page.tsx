@@ -123,6 +123,25 @@ export default function AuthPage() {
             </Form.Item>
           )}
 
+          {mode === 'register' && (
+            <Form.Item
+              name="confirmPassword"
+              label="確認密碼"
+              dependencies={['password']}
+              rules={[
+                { required: true, message: '請再次輸入密碼' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('password') === value) return Promise.resolve();
+                    return Promise.reject(new Error('兩次密碼輸入不一致'));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password prefix={<LockOutlined />} size="large" placeholder="••••••" />
+            </Form.Item>
+          )}
+
           {mode === 'login-email' && (
             <div className="text-right mb-3">
               <Button type="link" size="small" onClick={() => router.push('/forgot-password')}>
