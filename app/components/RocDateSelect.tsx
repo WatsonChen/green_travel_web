@@ -45,7 +45,7 @@ export default function RocDateSelect({ value, onChange }: RocDateSelectProps) {
   }, [value]);
 
   const emit = (y: number | undefined, m: number | undefined, d: number | undefined) => {
-    if (!y || !m || !d) { onChange?.(null); return; }
+    if (!y || !m || !d) return;
     const date = dayjs(`${y + 1911}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
     onChange?.(date.isValid() ? date : null);
   };
